@@ -53,6 +53,7 @@ type options struct {
 	ClientID       string
 	ClientSecret   string
 	TenantHostname string
+	PrintResult    bool
 
 	config *config.CLIConfig
 }
@@ -90,6 +91,7 @@ func (o *options) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVarP(&o.User, "user", "u", o.User, i18n.Translate("Specify if a user login should be initiated."))
 	cmd.Flags().StringVar(&o.ClientID, "clientId", o.ClientID, i18n.Translate("Client ID of the application that is enabled for device flow grant type."))
 	cmd.Flags().StringVar(&o.ClientSecret, "clientSecret", o.ClientSecret, i18n.Translate("Client Secret of the application that is enabled for device flow grant type. This is optional if the application is configured as a public client."))
+	cmd.Flags().BoolVarP(&o.PrintResult, "print", "p", o.PrintResult, i18n.Translate("Print the result to stdout rather than writing config file."))
 }
 
 func (o *options) Complete(cmd *cobra.Command, args []string) error {
@@ -153,23 +155,27 @@ func (o *options) Run(cmd *cobra.Command, args []string) error {
 		token = tokenResponse.AccessToken
 	}
 
-	// add token to config
-	if _, err := o.config.LoadFromFile(); err != nil {
-		return err
-	}
+	if !o.PrintResult {
+		// add token to config
+		if _, err := o.config.LoadFromFile(); err != nil {
+			return err
+		}
 
-	o.config.AddAuth(&config.AuthConfig{
-		Tenant: o.TenantHostname,
-		Token:  token,
-		User:   o.User,
-	})
+		o.config.AddAuth(&config.AuthConfig{
+			Tenant: o.TenantHostname,
+			Token:  token,
+			User:   o.User,
+		})
 
-	// set current tenant
-	o.config.SetCurrentTenant(o.TenantHostname)
+		// set current tenant
+		o.config.SetCurrentTenant(o.TenantHostname)
 
-	// persist contents
-	if _, err := o.config.PersistFile(); err != nil {
-		return err
+		// persist contents
+		if _, err := o.config.PersistFile(); err != nil {
+			return err
+		}
+	} else {
+		fmt.Printf("token=%s\n", token)
 	}
 
 	return nil
